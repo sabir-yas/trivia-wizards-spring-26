@@ -1,4 +1,5 @@
 import type { SessionStatus, RoundStatus, TeamScore } from "./game";
+export type { TeamScore };
 
 // ─── Server → Client Events ──────────────────────────────────────────────────
 
