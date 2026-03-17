@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Venue {
+  id               String        @id @default(cuid())
+  name             String
+  address          String?
+  contactEmail     String?
+  hostPasswordHash String
+  createdAt        DateTime      @default(now())
+
+  tables       Table[]
+  gameSessions GameSession[]
+  questions    Question[]
+}
+
+model Table {
+  id          String  @id @default(cuid())
+  venueId     String
+  tableNumber Int
+  isActive    Boolean @default(true)
+
+  venue        Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  kioskDevices KioskDevice[]
+  teams        Team[]
+
+  @@unique([venueId, tableNumber])
+}
+
+model KioskDevice {
+  id               String   @id @default(cuid())
+  tableId          String
+  deviceIdentifier String   @unique
+  lastSeen         DateTime @default(now())
+
+  table      Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  deviceLogs DeviceLog[]
+}
+
+enum SessionStatus {
+  LOBBY
+  ACTIVE
+  COMPLETED
+}
+
+model GameSession {
+  id             String        @id @default(cuid())
+  venueId        String
+  sessionName    String
+  status         SessionStatus @default(LOBBY)
+  currentRoundId String?
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime      @default(now())
+
+  venue  Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  rounds Round[]
+  teams  Team[]
+}
+
+model Team {
+  id            String   @id @default(cuid())
+  gameSessionId String
+  tableId       String?
+  teamName      String
+  totalScore    Int      @default(0)
+  joinedAt      DateTime @default(now())
+
+  gameSession       GameSession        @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  table             Table?             @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  answerSubmissions AnswerSubmission[]
+
+  @@unique([gameSessionId, teamName])
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  venueId       String
+  questionText  String
+  options       Json
+  correctAnswer String
+  category      String?
+  points        Int      @default(10)
+  createdAt     DateTime @default(now())
+
+  venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  roundQuestions RoundQuestion[]
+}
+
+enum RoundStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+model Round {
+  id            String      @id @default(cuid())
+  gameSessionId String
+  roundNumber   Int
+  theme         String?
+  status        RoundStatus @default(PENDING)
+  startedAt     DateTime?
+  endedAt       DateTime?
+
+  gameSession    GameSession     @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  roundQuestions RoundQuestion[]
+
+  @@unique([gameSessionId, roundNumber])
+}
+
+model RoundQuestion {
+  id         String @id @default(cuid())
+  roundId    String
+  questionId String
+  orderIndex Int
+  timeLimit  Int    @default(30)
+
+  round             Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  question          Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerSubmissions AnswerSubmission[]
+
+  @@unique([roundId, orderIndex])
+}
+
+model AnswerSubmission {
+  id              String   @id @default(cuid())
+  teamId          String
+  roundQuestionId String
+  submittedAnswer String
+  isCorrect       Boolean
+  pointsAwarded   Int      @default(0)
+  submittedAt     DateTime @default(now())
+
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  roundQuestion RoundQuestion @relation(fields: [roundQuestionId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, roundQuestionId])
+}
+
+model DeviceLog {
+  id            String   @id @default(cuid())
+  kioskDeviceId String
+  event         String
+  metadata      Json?
+  occurredAt    DateTime @default(now())
+
+  kioskDevice KioskDevice @relation(fields: [kioskDeviceId], references: [id], onDelete: Cascade)
+}
