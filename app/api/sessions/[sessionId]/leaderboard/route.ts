@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+
+type TeamWithTable = Prisma.TeamGetPayload<{ include: { table: true } }>;
 
 export async function GET(
   _req: NextRequest,
@@ -12,7 +15,7 @@ export async function GET(
     include: { table: true },
   });
 
-  const leaderboard = teams.map((t, idx) => ({
+  const leaderboard = teams.map((t: TeamWithTable, idx: number) => ({
     rank: idx + 1,
     teamId: t.id,
     teamName: t.teamName,
