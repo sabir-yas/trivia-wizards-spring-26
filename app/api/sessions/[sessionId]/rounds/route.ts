@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { requireHostAuth } from "@/lib/auth";
 
 const createSchema = z.object({
-  roundNumber: z.number().int().min(1),
   theme: z.string().max(100).optional(),
 });
 
@@ -38,16 +37,24 @@ export async function POST(
   if (!auth.authorized) return auth.response;
 
   const { sessionId } = await params;
-  const body = await req.json().catch(() => null);
+  const body = await req.json().catch(() => ({}));
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "roundNumber is required" }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
+
+  // Auto-increment roundNumber based on existing rounds
+  const lastRound = await prisma.round.findFirst({
+    where: { gameSessionId: sessionId },
+    orderBy: { roundNumber: "desc" },
+    select: { roundNumber: true },
+  });
+  const roundNumber = (lastRound?.roundNumber ?? 0) + 1;
 
   const round = await prisma.round.create({
     data: {
       gameSessionId: sessionId,
-      roundNumber: parsed.data.roundNumber,
+      roundNumber,
       theme: parsed.data.theme,
     },
   });
