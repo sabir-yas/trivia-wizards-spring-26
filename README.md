@@ -74,8 +74,32 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run db:import-otdb` | Import 500 questions from Open Trivia Database |
 | `npm run db:studio` | Open Prisma Studio |
 
+## Game Flow
+
+1. Host creates a session and adds rounds with questions
+2. Teams register at `/kiosk` and are assigned to a table
+3. Host starts the game, then starts rounds one at a time
+4. For each round, host asks questions one by one — a countdown timer runs server-side
+5. Teams submit answers on their kiosk before time expires
+6. Host reveals the correct answer after each question; scores update in real time
+7. After all rounds, host ends the game — a podium screen shows 1st, 2nd, and 3rd place on both the host panel and the TV display
+
+## Sound Effects
+
+All sound effects are synthesized via the Web Audio API (no audio files required). Sounds play on:
+
+- Countdown ticks (urgent tone for last 5 seconds)
+- Timer expired
+- Round start / end
+- Question revealed
+- Answer correct / wrong (kiosk)
+- Answer locked in (kiosk)
+- New team joined (host)
+- Game over fanfare
+
 ## Deployment (Render)
 
 - **Build Command:** `npm install; npm run build`
 - **Start Command:** `npm run start`
 - Add all `.env` variables in the Render dashboard under Environment
+- Prisma client is generated automatically during build (`prisma generate && next build`)
