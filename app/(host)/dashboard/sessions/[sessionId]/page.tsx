@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/components/shared/SocketProvider";
+import { useSound } from "@/hooks/useSound";
 
 interface Question {
   id: string;
@@ -56,6 +57,7 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
   const { sessionId } = use(params);
   const router = useRouter();
   const socket = useSocket();
+  const sound = useSound();
 
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,21 +93,55 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
     loadQuestions();
   }, [sessionId]);
 
-  // Socket: join host room + listen for timer ticks
+  // Join the host socket room once session is loaded
   useEffect(() => {
     if (!session) return;
     socket.emit("host:join-session", { sessionId, hostToken: "host" });
+  }, [!!session, socket, sessionId]);
 
-    socket.on("timer:tick", ({ secondsRemaining }) => setTimer(secondsRemaining));
-    socket.on("timer:expired", () => setTimer(0));
-    socket.on("team:registered", () => loadSession());
+  // Register socket listeners once on mount — never re-register
+  useEffect(() => {
+    socket.on("timer:tick", ({ secondsRemaining }) => {
+      setTimer(secondsRemaining);
+      if (secondsRemaining <= 5 && secondsRemaining > 0) sound.urgentTick();
+    });
+    socket.on("timer:expired", () => {
+      setTimer(0);
+      sound.timerExpired();
+    });
+    socket.on("team:registered", () => {
+      loadSession();
+      sound.teamJoined();
+    });
+    socket.on("game:answer-reveal", ({ scores }) => {
+      setSession(prev => {
+        if (!prev) return prev;
+        const updated = prev.teams.map(t => {
+          const s = scores.find(s => s.teamId === t.id);
+          return s ? { ...t, totalScore: s.totalScore } : t;
+        });
+        return { ...prev, teams: updated };
+      });
+    });
+    socket.on("game:round-ended", ({ leaderboard }) => {
+      setSession(prev => {
+        if (!prev) return prev;
+        const updated = prev.teams.map(t => {
+          const s = leaderboard.find(s => s.teamId === t.id);
+          return s ? { ...t, totalScore: s.totalScore } : t;
+        });
+        return { ...prev, teams: updated };
+      });
+    });
 
     return () => {
       socket.off("timer:tick");
       socket.off("timer:expired");
       socket.off("team:registered");
+      socket.off("game:answer-reveal");
+      socket.off("game:round-ended");
     };
-  }, [session, socket, sessionId]);
+  }, [socket]);
 
   async function startSession() {
     await fetch(`/api/sessions/${sessionId}`, {
@@ -196,6 +232,81 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
   if (!session) return <div className="text-red-400 text-center py-16">Session not found.</div>;
 
   const currentRQ = activeRound?.roundQuestions.find(rq => rq.id === activeRQId) ?? null;
+  const sorted = [...session.teams].sort((a, b) => b.totalScore - a.totalScore);
+  const [first, second, third] = sorted;
+
+  if (session.status === "COMPLETED") {
+    return (
+      <div className="max-w-2xl mx-auto py-12 space-y-8">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">← Back</Link>
+          <h2 className="text-2xl font-bold">{session.sessionName}</h2>
+          <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-500/20 text-gray-400">COMPLETED</span>
+        </div>
+
+        <div className="text-center">
+          <div className="text-5xl mb-2">🏆</div>
+          <h3 className="text-3xl font-bold text-white">Final Results</h3>
+          <p className="text-gray-400 mt-1">{session.teams.length} teams competed</p>
+        </div>
+
+        {/* Podium */}
+        {sorted.length > 0 && (
+          <div className="flex items-end justify-center gap-4">
+            {/* 2nd */}
+            {second && (
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-3xl">🥈</span>
+                <div className="bg-gray-400/20 border-2 border-gray-500 rounded-t-xl px-6 py-4 text-center w-36 h-28 flex flex-col justify-center">
+                  <p className="text-white font-bold text-sm leading-tight">{second.teamName}</p>
+                  <p className="text-gray-300 text-xl font-bold mt-1">{second.totalScore}</p>
+                  <p className="text-gray-500 text-xs">pts</p>
+                </div>
+              </div>
+            )}
+            {/* 1st */}
+            {first && (
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-4xl">🥇</span>
+                <div className="bg-yellow-600/30 border-2 border-yellow-500 rounded-t-xl px-6 py-4 text-center w-40 h-36 flex flex-col justify-center">
+                  <p className="text-white font-bold leading-tight">{first.teamName}</p>
+                  <p className="text-yellow-300 text-2xl font-bold mt-1">{first.totalScore}</p>
+                  <p className="text-yellow-500 text-xs">pts</p>
+                </div>
+              </div>
+            )}
+            {/* 3rd */}
+            {third && (
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-3xl">🥉</span>
+                <div className="bg-orange-700/20 border-2 border-orange-600 rounded-t-xl px-6 py-4 text-center w-36 h-20 flex flex-col justify-center">
+                  <p className="text-white font-bold text-sm leading-tight">{third.teamName}</p>
+                  <p className="text-orange-300 text-xl font-bold mt-1">{third.totalScore}</p>
+                  <p className="text-orange-500 text-xs">pts</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Full standings */}
+        {sorted.length > 3 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">All Teams</h4>
+            {sorted.map((t, i) => (
+              <div key={t.id} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-500 w-6 text-sm">{i + 1}.</span>
+                  <span className="text-white">{t.teamName}</span>
+                </div>
+                <span className="text-purple-300 font-bold">{t.totalScore} pts</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -301,7 +412,7 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
                         <span className="text-gray-300 truncate flex-1">{rq.question.questionText}</span>
                         <div className="flex items-center gap-2 ml-2 shrink-0">
                           <span className="text-gray-500 text-xs">{rq.timeLimit}s</span>
-                          {activeRound?.id === round.id && activeRQId !== rq.id && !questionRevealed && (
+                          {activeRound?.id === round.id && activeRQId !== rq.id && !(activeRQId && !questionRevealed) && (
                             <button onClick={() => startQuestion(rq)} className="px-2 py-0.5 bg-purple-600 hover:bg-purple-700 rounded text-xs">
                               Ask
                             </button>

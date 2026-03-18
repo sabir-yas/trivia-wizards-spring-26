@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { isTimerActive } from "@/lib/game-engine";
 
 const schema = z.object({
   roundQuestionId: z.string().min(1),
@@ -24,14 +23,6 @@ export async function POST(
   // Validate team exists
   const team = await prisma.team.findUnique({ where: { id: teamId } });
   if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
-
-  // Check timer is still active (server-authoritative)
-  if (!isTimerActive(roundQuestionId)) {
-    return NextResponse.json(
-      { error: "Time has expired", code: "TIMER_EXPIRED" },
-      { status: 400 }
-    );
-  }
 
   // Check for duplicate submission
   const existing = await prisma.answerSubmission.findUnique({

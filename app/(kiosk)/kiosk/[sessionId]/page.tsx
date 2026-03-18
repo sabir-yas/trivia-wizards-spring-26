@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSocket } from "@/components/shared/SocketProvider";
+import { useSound } from "@/hooks/useSound";
 import type { GameQuestionStartPayload } from "@/types/socket-events";
 import { Suspense } from "react";
 
@@ -15,8 +16,10 @@ interface RevealInfo {
 
 function KioskGame({ sessionId }: { sessionId: string }) {
   const socket = useSocket();
+  const sound = useSound();
   const searchParams = useSearchParams();
   const teamId = searchParams.get("teamId") ?? "";
+  const selectedAnswerRef = useRef<string | null>(null);
 
   const [state, setState] = useState<GameState>("waiting");
   const [question, setQuestion] = useState<GameQuestionStartPayload | null>(null);
@@ -32,6 +35,7 @@ function KioskGame({ sessionId }: { sessionId: string }) {
     socket.on("game:question-start", (payload) => {
       setQuestion(payload);
       setSelectedAnswer(null);
+      selectedAnswerRef.current = null;
       setReveal(null);
       setTimer(payload.timeLimit);
       setState("question");
@@ -41,16 +45,27 @@ function KioskGame({ sessionId }: { sessionId: string }) {
     socket.on("timer:expired", () => {
       setTimer(0);
       setState(prev => prev === "question" ? "answered" : prev);
+      sound.timerExpired();
     });
 
     socket.on("game:answer-reveal", ({ correctAnswer }) => {
-      setReveal({ correctAnswer, myAnswer: selectedAnswer ?? "" });
+      const myAns = selectedAnswerRef.current ?? "";
+      setReveal({ correctAnswer, myAnswer: myAns });
       setState("reveal");
+      const isCorrect = myAns.toLowerCase() === correctAnswer.toLowerCase();
+      if (isCorrect) sound.correctAnswer();
+      else sound.wrongAnswer();
     });
 
     socket.on("game:round-ended", () => setState("waiting"));
-    socket.on("game:session-ended", () => setState("waiting"));
-    socket.on("answer:acknowledged", () => setState("answered"));
+    socket.on("game:session-ended", () => {
+      setState("waiting");
+      sound.gameOver();
+    });
+    socket.on("answer:acknowledged", () => {
+      setState("answered");
+      sound.answerLocked();
+    });
 
     return () => {
       socket.off("game:question-start");
@@ -61,11 +76,12 @@ function KioskGame({ sessionId }: { sessionId: string }) {
       socket.off("game:session-ended");
       socket.off("answer:acknowledged");
     };
-  }, [socket, sessionId, teamId, selectedAnswer]);
+  }, [socket, sessionId, teamId]);
 
   async function submitAnswer(answer: string) {
     if (!question || submitting || state !== "question") return;
     setSelectedAnswer(answer);
+    selectedAnswerRef.current = answer;
     setSubmitting(true);
     try {
       await fetch(`/api/teams/${teamId}/answers`, {
