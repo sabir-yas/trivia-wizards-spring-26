@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useSocket } from "@/components/shared/SocketProvider";
+import { useSound } from "@/hooks/useSound";
 import type {
   GameQuestionStartPayload,
   GameAnswerRevealPayload,
@@ -13,6 +14,7 @@ type DisplayState = "lobby" | "question" | "reveal" | "leaderboard" | "ended";
 export default function DisplayPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params);
   const socket = useSocket();
+  const sound = useSound();
 
   const [displayState, setDisplayState] = useState<DisplayState>("lobby");
   const [question, setQuestion] = useState<GameQuestionStartPayload | null>(null);
@@ -41,6 +43,7 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
       setDisplayState("lobby");
       setQuestion(null);
       setReveal(null);
+      sound.roundStart();
     });
 
     socket.on("game:question-start", (payload) => {
@@ -48,25 +51,39 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
       setReveal(null);
       setTimer(payload.timeLimit);
       setDisplayState("question");
+      sound.questionStart();
     });
 
-    socket.on("timer:tick", ({ secondsRemaining }) => setTimer(secondsRemaining));
-    socket.on("timer:expired", () => setTimer(0));
+    socket.on("timer:tick", ({ secondsRemaining }) => {
+      setTimer(secondsRemaining);
+      if (secondsRemaining <= 5 && secondsRemaining > 0) {
+        sound.urgentTick();
+      } else if (secondsRemaining > 5) {
+        sound.tick();
+      }
+    });
+    socket.on("timer:expired", () => {
+      setTimer(0);
+      sound.timerExpired();
+    });
 
     socket.on("game:answer-reveal", (payload) => {
       setReveal(payload);
       setLeaderboard(payload.scores);
       setDisplayState("reveal");
+      sound.answerReveal();
     });
 
     socket.on("game:round-ended", ({ leaderboard }) => {
       setLeaderboard(leaderboard);
       setDisplayState("leaderboard");
+      sound.roundEnd();
     });
 
     socket.on("game:session-ended", ({ finalLeaderboard }) => {
       setLeaderboard(finalLeaderboard);
       setDisplayState("ended");
+      sound.gameOver();
     });
 
     return () => {
@@ -176,13 +193,11 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
     );
   }
 
-  // Leaderboard
-  if (displayState === "leaderboard" || displayState === "ended") {
+  // Mid-round leaderboard
+  if (displayState === "leaderboard") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-10">
-        <h2 className="text-5xl font-bold mb-2 text-center">
-          {displayState === "ended" ? "🏆 Final Results" : "📊 Leaderboard"}
-        </h2>
+        <h2 className="text-5xl font-bold mb-2 text-center">📊 Leaderboard</h2>
         <p className="text-gray-400 text-xl mb-10">{sessionName}</p>
         <div className="w-full max-w-2xl space-y-4">
           {leaderboard.slice(0, 10).map((team, i) => (
@@ -206,9 +221,77 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
             </div>
           ))}
         </div>
-        {displayState === "ended" && (
-          <p className="text-gray-500 text-xl mt-12">Thanks for playing Trivia Wizards!</p>
+      </div>
+    );
+  }
+
+  // Final results podium
+  if (displayState === "ended") {
+    const [first, second, third] = leaderboard;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center">
+        <div className="text-7xl mb-4">🏆</div>
+        <h2 className="text-6xl font-bold text-white mb-2">Final Results</h2>
+        <p className="text-gray-400 text-2xl mb-16">{sessionName}</p>
+
+        {/* Podium — 2nd, 1st, 3rd side by side */}
+        <div className="flex items-end justify-center gap-6 mb-12">
+          {/* 2nd place */}
+          {second && (
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-5xl">🥈</span>
+              <div className="bg-gray-400/20 border-2 border-gray-400 rounded-t-3xl px-8 py-6 w-48 h-40 flex flex-col justify-center">
+                <p className="text-white font-bold text-xl leading-tight">{second.teamName}</p>
+                {second.tableNumber && <p className="text-gray-400 text-sm mt-1">Table {second.tableNumber}</p>}
+                <p className="text-gray-200 text-3xl font-bold mt-2">{second.totalScore}</p>
+                <p className="text-gray-400 text-sm">pts</p>
+              </div>
+            </div>
+          )}
+
+          {/* 1st place — tallest */}
+          {first && (
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-7xl animate-bounce">🥇</span>
+              <div className="bg-yellow-600/40 border-2 border-yellow-400 rounded-t-3xl px-10 py-8 w-56 h-52 flex flex-col justify-center">
+                <p className="text-white font-bold text-2xl leading-tight">{first.teamName}</p>
+                {first.tableNumber && <p className="text-yellow-300/70 text-sm mt-1">Table {first.tableNumber}</p>}
+                <p className="text-yellow-300 text-4xl font-bold mt-2">{first.totalScore}</p>
+                <p className="text-yellow-400 text-sm">pts</p>
+              </div>
+            </div>
+          )}
+
+          {/* 3rd place */}
+          {third && (
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-5xl">🥉</span>
+              <div className="bg-orange-700/20 border-2 border-orange-500 rounded-t-3xl px-8 py-6 w-48 h-32 flex flex-col justify-center">
+                <p className="text-white font-bold text-xl leading-tight">{third.teamName}</p>
+                {third.tableNumber && <p className="text-orange-300/70 text-sm mt-1">Table {third.tableNumber}</p>}
+                <p className="text-orange-300 text-3xl font-bold mt-2">{third.totalScore}</p>
+                <p className="text-orange-400 text-sm">pts</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Rest of the teams */}
+        {leaderboard.length > 3 && (
+          <div className="w-full max-w-lg space-y-3">
+            {leaderboard.slice(3).map((team, i) => (
+              <div key={team.teamId} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-2xl px-6 py-3">
+                <div className="flex items-center gap-4">
+                  <span className="text-gray-500 text-xl w-8">{i + 4}.</span>
+                  <span className="text-xl text-white">{team.teamName}</span>
+                </div>
+                <span className="text-xl font-bold text-purple-300">{team.totalScore}</span>
+              </div>
+            ))}
+          </div>
         )}
+
+        <p className="text-gray-600 text-xl mt-12">Thanks for playing Trivia Wizards!</p>
       </div>
     );
   }
