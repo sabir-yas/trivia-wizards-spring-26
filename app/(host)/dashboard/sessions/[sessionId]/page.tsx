@@ -315,11 +315,11 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
         <div className="flex items-center gap-3">
           <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">← Back</Link>
           <h2 className="text-2xl font-bold">{session.sessionName}</h2>
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-            session.status === "ACTIVE" ? "bg-green-500/20 text-green-300" :
-            session.status === "COMPLETED" ? "bg-gray-500/20 text-gray-400" :
-            "bg-yellow-500/20 text-yellow-300"
-          }`}>{session.status}</span>
+          <span className={`text-xs px-2 py-1 rounded-full font-medium ${{
+            ACTIVE: "bg-green-500/20 text-green-300",
+            COMPLETED: "bg-gray-500/20 text-gray-400",
+            LOBBY: "bg-yellow-500/20 text-yellow-300",
+          }[session.status]}`}>{session.status}</span>
         </div>
         <div className="flex gap-2">
           <a
