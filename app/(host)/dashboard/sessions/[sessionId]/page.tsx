@@ -354,11 +354,12 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
         <div className="col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-300">Rounds</h3>
-            {session.status !== "COMPLETED" && (
-              <button onClick={() => setShowAddRound(!showAddRound)} className="text-sm text-purple-400 hover:text-purple-300">
-                + Add Round
-              </button>
-            )}
+            <button
+              onClick={() => setShowAddRound(!showAddRound)}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-xs font-semibold transition-colors"
+            >
+              + Add Round
+            </button>
           </div>
 
           {showAddRound && (
