@@ -41,7 +41,17 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
   }, [sessionId]);
 
   useEffect(() => {
-    socket.emit("display:join-session", { sessionId });
+    function joinSession() {
+      socket.emit("display:join-session", { sessionId });
+    }
+
+    if (socket.connected) {
+      joinSession();
+    } else {
+      socket.once("connect", joinSession);
+    }
+
+    socket.on("connect", joinSession);
 
     socket.on("game:state-changed", ({ status }) => {
       if (status === "LOBBY") setDisplayState("lobby");
@@ -93,6 +103,7 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
     });
 
     return () => {
+      socket.off("connect", joinSession);
       socket.off("game:state-changed");
       socket.off("game:round-started");
       socket.off("game:question-start");

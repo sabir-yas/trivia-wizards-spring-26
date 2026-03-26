@@ -37,7 +37,20 @@ function KioskGame({ sessionId }: { sessionId: string }) {
 
   useEffect(() => {
     if (!teamId) return;
-    socket.emit("kiosk:join-session", { sessionId, teamId, deviceToken: "kiosk" });
+
+    function joinSession() {
+      socket.emit("kiosk:join-session", { sessionId, teamId, deviceToken: "kiosk" });
+    }
+
+    // Emit immediately if already connected, otherwise wait for connect
+    if (socket.connected) {
+      joinSession();
+    } else {
+      socket.once("connect", joinSession);
+    }
+
+    // Re-join on every reconnection (mobile network switches, app backgrounding, etc.)
+    socket.on("connect", joinSession);
 
     socket.on("game:question-start", (payload) => {
       setQuestion(payload);
@@ -75,6 +88,7 @@ function KioskGame({ sessionId }: { sessionId: string }) {
     });
 
     return () => {
+      socket.off("connect", joinSession);
       socket.off("game:question-start");
       socket.off("timer:tick");
       socket.off("timer:expired");
