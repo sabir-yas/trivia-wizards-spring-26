@@ -29,9 +29,15 @@ app.prepare().then(() => {
     httpServer,
     {
       cors: {
-        origin: dev ? "*" : process.env.NEXT_PUBLIC_APP_URL,
+        // In production allow the configured URL or all origins as fallback.
+        // Since the server and client are on the same Render service, same-origin
+        // requests don't need CORS, but this keeps it safe for future setups.
+        origin: dev ? "*" : (process.env.NEXT_PUBLIC_APP_URL ?? "*"),
         methods: ["GET", "POST"],
       },
+      // Allow both transports so Render's infrastructure works regardless of
+      // whether the client upgrades to WebSocket successfully
+      transports: ["websocket", "polling"],
     }
   );
 
