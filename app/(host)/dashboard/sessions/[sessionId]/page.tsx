@@ -553,27 +553,67 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
                     >
                       + Assign Question
                     </button>
-                    {showAssignQ && (
-                      <div className="mt-2 max-h-48 overflow-y-auto space-y-1 rounded-lg" style={{ background: "var(--surface-high)" }}>
-                        {allQuestions
-                          .filter(q => !round.roundQuestions.some(rq => rq.question.id === q.id))
-                          .map(q => (
-                            <button
-                              key={q.id}
-                              onClick={() => { assignQuestion(q.id); setShowAssignQ(false); }}
-                              className="w-full text-left text-xs px-3 py-2 rounded-lg transition-colors"
-                              style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-highest)")}
-                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                            >
-                              {q.questionText}
-                              <span className="ml-2" style={{ color: "var(--on-surface-var)" }}>
-                                {q.category} · {q.points}pts
-                              </span>
-                            </button>
-                          ))}
-                      </div>
-                    )}
+                    {showAssignQ && (() => {
+                      const unassigned = allQuestions.filter(q => !round.roundQuestions.some(rq => rq.question.id === q.id));
+                      const categories = Array.from(new Set(unassigned.map(q => q.category).filter(Boolean))) as string[];
+                      const filtered = assignCategoryFilter
+                        ? unassigned.filter(q => q.category === assignCategoryFilter)
+                        : unassigned;
+                      return (
+                        <div className="mt-2 rounded-lg overflow-hidden" style={{ background: "var(--surface-high)" }}>
+                          {/* Category filter chips */}
+                          {categories.length > 0 && (
+                            <div className="flex gap-1.5 flex-wrap px-3 pt-2 pb-1">
+                              <button
+                                onClick={() => setAssignCategoryFilter("")}
+                                className="text-xs px-2 py-0.5 rounded-full transition-colors"
+                                style={{
+                                  background: assignCategoryFilter === "" ? "var(--primary)" : "var(--surface-highest)",
+                                  color: assignCategoryFilter === "" ? "var(--on-primary)" : "var(--on-surface-var)",
+                                  fontFamily: "Manrope, sans-serif",
+                                }}
+                              >
+                                All
+                              </button>
+                              {categories.map(cat => (
+                                <button
+                                  key={cat}
+                                  onClick={() => setAssignCategoryFilter(cat)}
+                                  className="text-xs px-2 py-0.5 rounded-full transition-colors"
+                                  style={{
+                                    background: assignCategoryFilter === cat ? "var(--primary)" : "var(--surface-highest)",
+                                    color: assignCategoryFilter === cat ? "var(--on-primary)" : "var(--on-surface-var)",
+                                    fontFamily: "Manrope, sans-serif",
+                                  }}
+                                >
+                                  {cat}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {/* Question list */}
+                          <div className="max-h-48 overflow-y-auto space-y-0.5 p-1">
+                            {filtered.length === 0 ? (
+                              <p className="text-xs px-3 py-2" style={{ color: "var(--on-surface-var)" }}>No questions in this category</p>
+                            ) : filtered.map(q => (
+                              <button
+                                key={q.id}
+                                onClick={() => { assignQuestion(q.id); setShowAssignQ(false); }}
+                                className="w-full text-left text-xs px-3 py-2 rounded-lg transition-colors"
+                                style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-highest)")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                              >
+                                {q.questionText}
+                                <span className="ml-2" style={{ color: "var(--on-surface-var)" }}>
+                                  {q.category} · {q.points}pts
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
