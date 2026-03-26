@@ -35,9 +35,7 @@ app.prepare().then(() => {
         origin: dev ? "*" : (process.env.NEXT_PUBLIC_APP_URL ?? "*"),
         methods: ["GET", "POST"],
       },
-      // Allow both transports so Render's infrastructure works regardless of
-      // whether the client upgrades to WebSocket successfully
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
     }
   );
 
