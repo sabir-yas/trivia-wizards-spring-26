@@ -97,6 +97,25 @@ All sound effects are synthesized via the Web Audio API (no audio files required
 - New team joined (host)
 - Game over fanfare
 
+## Category Filtering
+
+Questions in both the Questions library and the session builder can be filtered by category. The dashboard questions page and the session add-round modal both include a category dropdown so hosts can quickly find questions from a specific topic (Science, History, Sports, Geography, Entertainment, etc.).
+
+## UI & Design
+
+The kiosk, display, and host interfaces use a **Neon Grimoire** design system with:
+
+- Neon glow effects on buttons and input fields
+- Vibrant color-coded answer buttons
+- Background gradients and entrance animations on waiting, answered, and reveal screens
+- Animated bounce-dot loading states
+- Responsive typography across screen sizes
+- Consistent utility classes via `globals.css`
+
+## Socket.io Transport
+
+The app forces **WebSocket-only** transport (HTTP long-polling is disabled). This eliminates the 1–3 s polling delay on mobile browsers, making timer ticks and question delivery instant on phones and tablets.
+
 ## Deployment (Render)
 
 - **Build Command:** `npm install; npm run build`
