@@ -15,9 +15,15 @@ export function getSocket(): AppSocket {
 
     socket = io(url, {
       autoConnect: false,
-      // Prefer WebSocket over long-polling; Render supports WS and polling
-      // can be unreliable on their free tier
-      transports: ["websocket", "polling"],
+      // Skip the polling handshake and connect directly via WebSocket.
+      // Polling adds 1-3s of latency on mobile — especially noticeable for
+      // timer ticks and question delivery.
+      transports: ["websocket"],
+      // Reconnect aggressively for mobile network switches
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 2000,
     });
   }
   return socket;
