@@ -26,6 +26,7 @@ interface Round {
   id: string;
   roundNumber: number;
   theme: string | null;
+  defaultTimeLimit: number;
   status: "PENDING" | "ACTIVE" | "COMPLETED";
   roundQuestions: RoundQuestion[];
 }
@@ -66,11 +67,12 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
   const [questionRevealed, setQuestionRevealed] = useState(false);
   const [timer, setTimer] = useState<number | null>(null);
 
-  // For adding rounds / questions
   const [allQuestions, setAllQuestions] = useState<AllQuestion[]>([]);
   const [showAddRound, setShowAddRound] = useState(false);
   const [newRoundTheme, setNewRoundTheme] = useState("");
+  const [newRoundTimeLimit, setNewRoundTimeLimit] = useState(30);
   const [showAssignQ, setShowAssignQ] = useState(false);
+  const [assignCategoryFilter, setAssignCategoryFilter] = useState("");
 
   async function loadSession() {
     const res = await fetch(`/api/sessions/${sessionId}`);
@@ -93,13 +95,11 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
     loadQuestions();
   }, [sessionId]);
 
-  // Join the host socket room once session is loaded
   useEffect(() => {
     if (!session) return;
     socket.emit("host:join-session", { sessionId, hostToken: "host" });
   }, [!!session, socket, sessionId]);
 
-  // Register socket listeners once on mount — never re-register
   useEffect(() => {
     socket.on("timer:tick", ({ secondsRemaining }) => {
       setTimer(secondsRemaining);
@@ -169,9 +169,13 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
     const res = await fetch(`/api/sessions/${sessionId}/rounds`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roundNumber: nextNum, theme: newRoundTheme || undefined }),
+      body: JSON.stringify({
+        roundNumber: nextNum,
+        theme: newRoundTheme || undefined,
+        defaultTimeLimit: newRoundTimeLimit,
+      }),
     });
-    if (res.ok) { setShowAddRound(false); setNewRoundTheme(""); loadSession(); }
+    if (res.ok) { setShowAddRound(false); setNewRoundTheme(""); setNewRoundTimeLimit(30); loadSession(); }
   }
 
   async function startRound(round: Round) {
@@ -228,78 +232,112 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
     loadSession();
   }
 
-  if (loading) return <div className="text-gray-500 text-center py-16">Loading...</div>;
-  if (!session) return <div className="text-red-400 text-center py-16">Session not found.</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="flex gap-1.5">
+        {[0,1,2].map(i => (
+          <div key={i} className="bounce-dot" style={{ animationDelay: `${i * 0.15}s` }} />
+        ))}
+      </div>
+    </div>
+  );
+  if (!session) return <div className="text-center py-16" style={{ color: "var(--error)" }}>Session not found.</div>;
 
   const currentRQ = activeRound?.roundQuestions.find(rq => rq.id === activeRQId) ?? null;
   const sorted = [...session.teams].sort((a, b) => b.totalScore - a.totalScore);
   const [first, second, third] = sorted;
 
+  // ── COMPLETED view ──
   if (session.status === "COMPLETED") {
     return (
       <div className="max-w-2xl mx-auto py-12 space-y-8">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">← Back</Link>
-          <h2 className="text-2xl font-bold">{session.sessionName}</h2>
-          <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-500/20 text-gray-400">COMPLETED</span>
+          <Link href="/dashboard" className="btn-tertiary text-sm px-2 py-1">← Back</Link>
+          <h2 className="font-display text-2xl font-bold" style={{ color: "var(--on-surface)" }}>
+            {session.sessionName}
+          </h2>
+          <span className="badge badge-completed">COMPLETED</span>
         </div>
 
         <div className="text-center">
-          <div className="text-5xl mb-2">🏆</div>
-          <h3 className="text-3xl font-bold text-white">Final Results</h3>
-          <p className="text-gray-400 mt-1">{session.teams.length} teams competed</p>
+          <div className="text-5xl mb-3">🏆</div>
+          <h3 className="font-display text-3xl font-bold" style={{ color: "var(--tertiary)" }}>
+            Final Results
+          </h3>
+          <p className="text-sm mt-1" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+            {session.teams.length} teams competed
+          </p>
         </div>
 
-        {/* Podium */}
         {sorted.length > 0 && (
           <div className="flex items-end justify-center gap-4">
-            {/* 2nd */}
             {second && (
               <div className="flex flex-col items-center gap-2">
                 <span className="text-3xl">🥈</span>
-                <div className="bg-gray-400/20 border-2 border-gray-500 rounded-t-xl px-6 py-4 text-center w-36 h-28 flex flex-col justify-center">
-                  <p className="text-white font-bold text-sm leading-tight">{second.teamName}</p>
-                  <p className="text-gray-300 text-xl font-bold mt-1">{second.totalScore}</p>
-                  <p className="text-gray-500 text-xs">pts</p>
+                <div
+                  className="rounded-t-2xl px-6 py-4 text-center w-36 h-28 flex flex-col justify-center glow-secondary"
+                  style={{
+                    background: "color-mix(in srgb, var(--on-surface-var) 10%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--on-surface-var) 25%, transparent)",
+                  }}
+                >
+                  <p className="font-semibold text-sm leading-tight" style={{ color: "var(--on-surface)" }}>{second.teamName}</p>
+                  <p className="font-display text-xl font-bold mt-1" style={{ color: "var(--on-surface)" }}>{second.totalScore}</p>
+                  <p className="text-xs" style={{ color: "var(--on-surface-var)" }}>pts</p>
                 </div>
               </div>
             )}
-            {/* 1st */}
             {first && (
               <div className="flex flex-col items-center gap-2">
                 <span className="text-4xl">🥇</span>
-                <div className="bg-yellow-600/30 border-2 border-yellow-500 rounded-t-xl px-6 py-4 text-center w-40 h-36 flex flex-col justify-center">
-                  <p className="text-white font-bold leading-tight">{first.teamName}</p>
-                  <p className="text-yellow-300 text-2xl font-bold mt-1">{first.totalScore}</p>
-                  <p className="text-yellow-500 text-xs">pts</p>
+                <div
+                  className="rounded-t-2xl px-6 py-4 text-center w-40 h-36 flex flex-col justify-center glow-tertiary"
+                  style={{
+                    background: "color-mix(in srgb, var(--tertiary) 12%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--tertiary) 35%, transparent)",
+                  }}
+                >
+                  <p className="font-semibold leading-tight" style={{ color: "var(--on-surface)" }}>{first.teamName}</p>
+                  <p className="font-display text-2xl font-bold mt-1" style={{ color: "var(--tertiary)" }}>{first.totalScore}</p>
+                  <p className="text-xs" style={{ color: "var(--tertiary)", opacity: 0.7 }}>pts</p>
                 </div>
               </div>
             )}
-            {/* 3rd */}
             {third && (
               <div className="flex flex-col items-center gap-2">
                 <span className="text-3xl">🥉</span>
-                <div className="bg-orange-700/20 border-2 border-orange-600 rounded-t-xl px-6 py-4 text-center w-36 h-20 flex flex-col justify-center">
-                  <p className="text-white font-bold text-sm leading-tight">{third.teamName}</p>
-                  <p className="text-orange-300 text-xl font-bold mt-1">{third.totalScore}</p>
-                  <p className="text-orange-500 text-xs">pts</p>
+                <div
+                  className="rounded-t-2xl px-6 py-4 text-center w-36 h-20 flex flex-col justify-center"
+                  style={{
+                    background: "color-mix(in srgb, #ff7afb 8%, transparent)",
+                    border: "1px solid color-mix(in srgb, #ff7afb 20%, transparent)",
+                  }}
+                >
+                  <p className="font-semibold text-sm leading-tight" style={{ color: "var(--on-surface)" }}>{third.teamName}</p>
+                  <p className="font-display text-xl font-bold mt-1" style={{ color: "var(--primary)" }}>{third.totalScore}</p>
+                  <p className="text-xs" style={{ color: "var(--on-surface-var)" }}>pts</p>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Full standings */}
         {sorted.length > 3 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">All Teams</h4>
+            <h4 className="font-display text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--on-surface-var)" }}>
+              All Teams
+            </h4>
             {sorted.map((t, i) => (
-              <div key={t.id} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-5 py-3">
+              <div
+                key={t.id}
+                className="flex items-center justify-between rounded-xl px-5 py-3"
+                style={{ background: i % 2 === 0 ? "var(--surface-container)" : "var(--surface-low)" }}
+              >
                 <div className="flex items-center gap-3">
-                  <span className="text-gray-500 w-6 text-sm">{i + 1}.</span>
-                  <span className="text-white">{t.teamName}</span>
+                  <span className="text-sm w-6" style={{ color: "var(--on-surface-var)" }}>{i + 1}.</span>
+                  <span className="text-sm" style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}>{t.teamName}</span>
                 </div>
-                <span className="text-purple-300 font-bold">{t.totalScore} pts</span>
+                <span className="font-display font-bold text-sm" style={{ color: "var(--primary)" }}>{t.totalScore} pts</span>
               </div>
             ))}
           </div>
@@ -308,41 +346,48 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
     );
   }
 
+  // ── ACTIVE / LOBBY view ──
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">← Back</Link>
-          <h2 className="text-2xl font-bold">{session.sessionName}</h2>
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${{
-            ACTIVE: "bg-green-500/20 text-green-300",
-            COMPLETED: "bg-gray-500/20 text-gray-400",
-            LOBBY: "bg-yellow-500/20 text-yellow-300",
-          }[session.status]}`}>{session.status}</span>
+          <Link href="/dashboard" className="btn-tertiary text-sm px-2 py-1">← Back</Link>
+          <h2 className="font-display text-2xl font-bold" style={{ color: "var(--on-surface)" }}>
+            {session.sessionName}
+          </h2>
+          <span className={`badge badge-${session.status.toLowerCase()}`}>{session.status}</span>
         </div>
         <div className="flex gap-2">
           <a
             href={`/display/${sessionId}`}
             target="_blank"
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs transition-colors"
+            className="btn-secondary px-3 py-1.5 text-xs"
           >
             Open Display ↗
           </a>
           <a
             href={`/kiosk?session=${sessionId}`}
             target="_blank"
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-xs transition-colors"
+            className="btn-secondary px-3 py-1.5 text-xs"
           >
             Open Kiosk ↗
           </a>
           {session.status === "LOBBY" && (
-            <button onClick={startSession} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-semibold transition-colors">
+            <button
+              onClick={startSession}
+              className="btn-primary px-3 py-1.5 text-sm"
+              style={{ background: "linear-gradient(135deg, #00e3fd, #00b4c8)", color: "#004d57" }}
+            >
               Start Game
             </button>
           )}
           {session.status === "ACTIVE" && (
-            <button onClick={endSession} className="px-3 py-1.5 bg-red-700 hover:bg-red-800 rounded-lg text-sm transition-colors">
+            <button
+              onClick={endSession}
+              className="px-3 py-1.5 text-sm font-semibold rounded-xl transition-colors"
+              style={{ background: "color-mix(in srgb, var(--error) 20%, transparent)", color: "var(--error)", border: "1px solid color-mix(in srgb, var(--error) 30%, transparent)", fontFamily: "Space Grotesk, sans-serif" }}
+            >
               End Game
             </button>
           )}
@@ -353,78 +398,145 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
         {/* Left: Rounds */}
         <div className="col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-300">Rounds</h3>
+            <h3 className="font-display font-semibold text-sm uppercase tracking-widest" style={{ color: "var(--on-surface-var)" }}>
+              Rounds
+            </h3>
             <button
               onClick={() => setShowAddRound(!showAddRound)}
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded-lg text-xs font-semibold transition-colors"
+              className="btn-primary px-3 py-1.5 text-xs"
             >
               + Add Round
             </button>
           </div>
 
           {showAddRound && (
-            <div className="flex gap-2">
-              <input value={newRoundTheme} onChange={e => setNewRoundTheme(e.target.value)}
+            <div className="flex gap-2 items-center">
+              <input
+                value={newRoundTheme}
+                onChange={e => setNewRoundTheme(e.target.value)}
                 placeholder="Round theme (optional)"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500" />
-              <button onClick={addRound} className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold">Add</button>
-              <button onClick={() => setShowAddRound(false)} className="px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm">Cancel</button>
+                className="neon-input flex-1 px-3 py-2 text-sm"
+              />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <label className="text-xs whitespace-nowrap" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                  Default timer
+                </label>
+                <input
+                  type="number"
+                  value={newRoundTimeLimit}
+                  onChange={e => setNewRoundTimeLimit(Math.max(5, Math.min(300, parseInt(e.target.value) || 30)))}
+                  className="neon-input w-16 px-2 py-2 text-sm text-center"
+                  min={5}
+                  max={300}
+                />
+                <span className="text-xs" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>s</span>
+              </div>
+              <button onClick={addRound} className="btn-primary px-3 py-2 text-sm">Add</button>
+              <button onClick={() => setShowAddRound(false)} className="btn-tertiary px-3 py-2 text-sm">Cancel</button>
             </div>
           )}
 
           {session.rounds.length === 0 ? (
-            <div className="text-center py-8 text-gray-600 text-sm">No rounds yet</div>
+            <div className="text-center py-10 text-sm" style={{ color: "var(--on-surface-var)" }}>
+              No rounds yet
+            </div>
           ) : (
             session.rounds.map(round => (
-              <div key={round.id} className={`bg-gray-900 border rounded-xl p-4 ${activeRound?.id === round.id ? "border-purple-600" : "border-gray-800"}`}>
+              <div
+                key={round.id}
+                className="rounded-xl p-4"
+                style={{
+                  background: "var(--surface-container)",
+                  border: activeRound?.id === round.id
+                    ? "1px solid color-mix(in srgb, var(--primary) 50%, transparent)"
+                    : "1px solid transparent",
+                  boxShadow: activeRound?.id === round.id
+                    ? "0 0 20px -5px color-mix(in srgb, var(--primary) 20%, transparent)"
+                    : "none",
+                }}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <span className="font-semibold">Round {round.roundNumber}</span>
-                    {round.theme && <span className="text-gray-400 text-sm ml-2">— {round.theme}</span>}
+                    <span className="font-display font-semibold" style={{ color: "var(--on-surface)" }}>
+                      Round {round.roundNumber}
+                    </span>
+                    {round.theme && (
+                      <span className="text-sm ml-2" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                        — {round.theme}
+                      </span>
+                    )}
+                    <span className="text-xs ml-2 px-2 py-0.5 rounded-full" style={{ background: "var(--surface-highest)", color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                      {round.defaultTimeLimit}s default
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      round.status === "ACTIVE" ? "bg-green-500/20 text-green-300" :
-                      round.status === "COMPLETED" ? "bg-gray-500/20 text-gray-400" :
-                      "bg-yellow-500/20 text-yellow-300"
-                    }`}>{round.status}</span>
+                    <span className={`badge badge-${round.status.toLowerCase()}`}>{round.status}</span>
                     {session.status === "ACTIVE" && round.status === "PENDING" && !activeRound && (
-                      <button onClick={() => startRound(round)} className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded-lg text-xs font-semibold">
+                      <button
+                        onClick={() => startRound(round)}
+                        className="btn-primary px-3 py-1 text-xs"
+                        style={{ background: "linear-gradient(135deg, #00e3fd, #00b4c8)", color: "#004d57" }}
+                      >
                         Start Round
                       </button>
                     )}
                     {activeRound?.id === round.id && (
-                      <button onClick={endRound} className="px-3 py-1 bg-red-700 hover:bg-red-800 rounded-lg text-xs">
+                      <button
+                        onClick={endRound}
+                        className="px-3 py-1 text-xs font-semibold rounded-lg"
+                        style={{ background: "color-mix(in srgb, var(--error) 20%, transparent)", color: "var(--error)", fontFamily: "Space Grotesk, sans-serif" }}
+                      >
                         End Round
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Questions in this round */}
                 {round.roundQuestions.length === 0 ? (
-                  <p className="text-gray-600 text-xs">No questions assigned</p>
+                  <p className="text-xs" style={{ color: "var(--on-surface-var)" }}>No questions assigned</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {round.roundQuestions.map(rq => (
-                      <div key={rq.id} className={`flex items-center justify-between p-2 rounded-lg text-sm ${
-                        activeRQId === rq.id ? "bg-purple-900/40 border border-purple-700" : "bg-gray-800"
-                      }`}>
-                        <span className="text-gray-300 truncate flex-1">{rq.question.questionText}</span>
+                      <div
+                        key={rq.id}
+                        className="flex items-center justify-between px-3 py-2 rounded-lg text-sm"
+                        style={{
+                          background: activeRQId === rq.id
+                            ? "color-mix(in srgb, var(--primary) 12%, transparent)"
+                            : "var(--surface-high)",
+                          border: activeRQId === rq.id
+                            ? "1px solid color-mix(in srgb, var(--primary) 40%, transparent)"
+                            : "1px solid transparent",
+                        }}
+                      >
+                        <span className="truncate flex-1" style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}>
+                          {rq.question.questionText}
+                        </span>
                         <div className="flex items-center gap-2 ml-2 shrink-0">
-                          <span className="text-gray-500 text-xs">{rq.timeLimit}s</span>
+                          <span className="text-xs" style={{ color: "var(--on-surface-var)" }}>{rq.timeLimit}s</span>
                           {activeRound?.id === round.id && activeRQId !== rq.id && !(activeRQId && !questionRevealed) && (
-                            <button onClick={() => startQuestion(rq)} className="px-2 py-0.5 bg-purple-600 hover:bg-purple-700 rounded text-xs">
+                            <button
+                              onClick={() => startQuestion(rq)}
+                              className="btn-primary px-2 py-0.5 text-xs"
+                            >
                               Ask
                             </button>
                           )}
                           {activeRQId === rq.id && !questionRevealed && (
-                            <button onClick={revealAnswer} className="px-2 py-0.5 bg-yellow-600 hover:bg-yellow-700 rounded text-xs font-semibold">
+                            <button
+                              onClick={revealAnswer}
+                              className="px-2 py-0.5 text-xs font-bold rounded-lg"
+                              style={{
+                                background: "linear-gradient(135deg, var(--tertiary-container), var(--tertiary))",
+                                color: "#2a1f00",
+                                fontFamily: "Space Grotesk, sans-serif",
+                              }}
+                            >
                               Reveal
                             </button>
                           )}
                           {activeRQId === rq.id && questionRevealed && (
-                            <span className="text-green-400 text-xs">✓ Revealed</span>
+                            <span className="text-xs font-semibold" style={{ color: "var(--secondary)" }}>✓ Revealed</span>
                           )}
                         </div>
                       </div>
@@ -432,21 +544,34 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
                   </div>
                 )}
 
-                {/* Assign question to this round */}
                 {activeRound?.id === round.id && (
                   <div className="mt-3">
-                    <button onClick={() => setShowAssignQ(!showAssignQ)} className="text-xs text-purple-400 hover:text-purple-300">
+                    <button
+                      onClick={() => setShowAssignQ(!showAssignQ)}
+                      className="text-xs"
+                      style={{ color: "var(--primary)", fontFamily: "Manrope, sans-serif" }}
+                    >
                       + Assign Question
                     </button>
                     {showAssignQ && (
-                      <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
-                        {allQuestions.filter(q => !round.roundQuestions.some(rq => rq.question.id === q.id)).map(q => (
-                          <button key={q.id} onClick={() => { assignQuestion(q.id); setShowAssignQ(false); }}
-                            className="w-full text-left text-xs bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-gray-300 transition-colors">
-                            {q.questionText}
-                            <span className="text-gray-500 ml-2">{q.category} · {q.points}pts</span>
-                          </button>
-                        ))}
+                      <div className="mt-2 max-h-48 overflow-y-auto space-y-1 rounded-lg" style={{ background: "var(--surface-high)" }}>
+                        {allQuestions
+                          .filter(q => !round.roundQuestions.some(rq => rq.question.id === q.id))
+                          .map(q => (
+                            <button
+                              key={q.id}
+                              onClick={() => { assignQuestion(q.id); setShowAssignQ(false); }}
+                              className="w-full text-left text-xs px-3 py-2 rounded-lg transition-colors"
+                              style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-highest)")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                            >
+                              {q.questionText}
+                              <span className="ml-2" style={{ color: "var(--on-surface-var)" }}>
+                                {q.category} · {q.points}pts
+                              </span>
+                            </button>
+                          ))}
                       </div>
                     )}
                   </div>
@@ -456,38 +581,77 @@ export default function SessionPage({ params }: { params: Promise<{ sessionId: s
           )}
         </div>
 
-        {/* Right: Active status + Teams */}
+        {/* Right: Active question + Teams */}
         <div className="space-y-4">
-          {/* Active question / timer */}
           {currentRQ && (
-            <div className="bg-purple-900/30 border border-purple-700 rounded-xl p-4">
-              <p className="text-xs text-purple-400 mb-1 font-medium uppercase tracking-wide">Active Question</p>
-              <p className="text-white text-sm mb-3">{currentRQ.question.questionText}</p>
+            <div
+              className="rounded-xl p-4 glow-primary"
+              style={{
+                background: "color-mix(in srgb, var(--primary) 8%, var(--surface-container))",
+                border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)",
+              }}
+            >
+              <p className="font-display text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--primary)" }}>
+                Active Question
+              </p>
+              <p className="text-sm mb-3" style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}>
+                {currentRQ.question.questionText}
+              </p>
               {timer !== null && (
                 <div className="text-center">
-                  <span className={`text-4xl font-bold ${timer <= 5 ? "text-red-400" : "text-white"}`}>{timer}</span>
-                  <p className="text-gray-500 text-xs">seconds</p>
+                  <span
+                    className="font-display text-4xl font-bold"
+                    style={{ color: timer <= 5 ? "var(--error)" : "var(--on-surface)" }}
+                  >
+                    {timer}
+                  </span>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--on-surface-var)" }}>seconds</p>
+                  <div className="mana-bar-track mt-2 h-2">
+                    <div
+                      className={`mana-bar-fill h-2 ${timer <= 5 ? "urgent" : ""}`}
+                      style={{ width: `${Math.max(0, (timer / currentRQ.timeLimit) * 100)}%` }}
+                    />
+                  </div>
                 </div>
               )}
               {questionRevealed && (
-                <p className="text-green-400 text-sm mt-2 font-medium">
-                  ✓ Answer: {currentRQ.question.correctAnswer}
+                <p className="text-sm mt-2 font-semibold" style={{ color: "var(--secondary)", fontFamily: "Manrope, sans-serif" }}>
+                  ✓ {currentRQ.question.correctAnswer}
                 </p>
               )}
             </div>
           )}
 
-          {/* Teams */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <h3 className="font-semibold text-gray-300 mb-3">Teams ({session.teams.length})</h3>
+          <div
+            className="rounded-xl p-4"
+            style={{ background: "var(--surface-container)" }}
+          >
+            <h3
+              className="font-display font-semibold text-sm uppercase tracking-widest mb-3"
+              style={{ color: "var(--on-surface-var)" }}
+            >
+              Teams ({session.teams.length})
+            </h3>
             {session.teams.length === 0 ? (
-              <p className="text-gray-600 text-sm">No teams yet</p>
+              <p className="text-sm" style={{ color: "var(--on-surface-var)" }}>No teams yet</p>
             ) : (
               <div className="space-y-2">
                 {session.teams.map((t, i) => (
-                  <div key={t.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300">{i + 1}. {t.teamName}</span>
-                    <span className="text-purple-300 font-semibold">{t.totalScore} pts</span>
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between text-sm py-1"
+                    style={{
+                      borderBottom: i < session.teams.length - 1
+                        ? "1px solid color-mix(in srgb, var(--outline-var) 30%, transparent)"
+                        : "none",
+                    }}
+                  >
+                    <span style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}>
+                      {i + 1}. {t.teamName}
+                    </span>
+                    <span className="font-display font-semibold" style={{ color: "var(--primary)" }}>
+                      {t.totalScore} pts
+                    </span>
                   </div>
                 ))}
               </div>

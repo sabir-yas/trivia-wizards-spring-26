@@ -5,6 +5,7 @@ import { requireHostAuth } from "@/lib/auth";
 
 const createSchema = z.object({
   theme: z.string().max(100).optional(),
+  defaultTimeLimit: z.number().int().min(5).max(300).optional(),
 });
 
 export async function GET(
@@ -56,6 +57,7 @@ export async function POST(
       gameSessionId: sessionId,
       roundNumber,
       theme: parsed.data.theme,
+      defaultTimeLimit: parsed.data.defaultTimeLimit ?? 30,
     },
   });
 

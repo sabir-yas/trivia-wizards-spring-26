@@ -14,7 +14,6 @@ function KioskRegisterForm() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Request fullscreen on touch devices
     if (document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
@@ -33,7 +32,6 @@ function KioskRegisterForm() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to join"); return; }
-      // Store teamId for this session
       sessionStorage.setItem(`team-${sessionId}`, data.data.id);
       router.push(`/kiosk/${sessionId}?teamId=${data.data.id}`);
     } finally {
@@ -43,20 +41,50 @@ function KioskRegisterForm() {
 
   if (!sessionId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-400 text-xl">No session ID provided. Ask your host for the kiosk URL.</p>
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <p className="text-xl text-center" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+          No session ID provided. Ask your host for the kiosk URL.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-purple-400 mb-3">Trivia Wizards</h1>
-          <p className="text-gray-400 text-xl">Enter your team name to join</p>
+    <div
+      className="min-h-screen flex items-center justify-center p-8"
+      style={{ background: "var(--bg)" }}
+    >
+      {/* Ambient glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 50%, color-mix(in srgb, #ff7afb 7%, transparent) 0%, transparent 70%)",
+        }}
+      />
+
+      <div className="relative w-full max-w-lg">
+        {/* Title */}
+        <div className="text-center mb-12">
+          <div className="text-6xl mb-4">🎩</div>
+          <h1
+            className="font-display font-bold mb-3"
+            style={{
+              fontSize: "clamp(2.5rem, 8vw, 4rem)",
+              background: "linear-gradient(135deg, #ff7afb, #00e3fd)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Trivia Wizards
+          </h1>
+          <p className="text-xl" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+            Enter your team name to join
+          </p>
         </div>
-        <form onSubmit={join} className="space-y-6">
+
+        <form onSubmit={join} className="space-y-5">
           <input
             type="text"
             value={teamName}
@@ -64,13 +92,19 @@ function KioskRegisterForm() {
             placeholder="Team Name"
             maxLength={50}
             autoFocus
-            className="w-full bg-gray-900 border-2 border-gray-700 focus:border-purple-500 rounded-2xl px-6 py-5 text-white text-2xl text-center focus:outline-none transition-colors"
+            className="neon-input w-full px-6 py-5 text-2xl text-center"
+            style={{ borderRadius: "1rem" }}
           />
-          {error && <p className="text-red-400 text-center text-lg">{error}</p>}
+          {error && (
+            <p className="text-center text-lg" style={{ color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading || !teamName.trim()}
-            className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-2xl py-5 rounded-2xl transition-colors"
+            className="btn-primary w-full py-5 text-2xl font-bold"
+            style={{ borderRadius: "1rem" }}
           >
             {loading ? "Joining..." : "Join Game"}
           </button>
@@ -82,7 +116,17 @@ function KioskRegisterForm() {
 
 export default function KioskPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
+          <div className="flex gap-1.5">
+            {[0,1,2].map(i => (
+              <div key={i} className="bounce-dot" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </div>
+      }
+    >
       <KioskRegisterForm />
     </Suspense>
   );

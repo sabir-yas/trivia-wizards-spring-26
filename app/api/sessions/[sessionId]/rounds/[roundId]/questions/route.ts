@@ -40,12 +40,19 @@ export async function POST(
     return NextResponse.json({ error: "questionId and orderIndex are required" }, { status: 400 });
   }
 
+  // Fall back to the round's defaultTimeLimit if no per-question override given
+  let timeLimit = parsed.data.timeLimit;
+  if (timeLimit === undefined) {
+    const round = await prisma.round.findUnique({ where: { id: roundId }, select: { defaultTimeLimit: true } });
+    timeLimit = round?.defaultTimeLimit ?? 30;
+  }
+
   const rq = await prisma.roundQuestion.create({
     data: {
       roundId,
       questionId: parsed.data.questionId,
       orderIndex: parsed.data.orderIndex,
-      timeLimit: parsed.data.timeLimit ?? 30,
+      timeLimit,
     },
     include: { question: true },
   });

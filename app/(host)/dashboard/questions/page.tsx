@@ -65,83 +65,158 @@ export default function QuestionsPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">← Back</Link>
-          <h2 className="text-2xl font-bold">Question Bank</h2>
+          <Link href="/dashboard" className="btn-tertiary text-sm px-2 py-1">← Back</Link>
+          <h2 className="font-display text-2xl font-bold" style={{ color: "var(--on-surface)" }}>
+            Question Bank
+          </h2>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold transition-colors"
+          className="btn-primary px-4 py-2 text-sm"
         >
           + Add Question
         </button>
       </div>
 
+      {/* Add question form */}
       {showForm && (
-        <form onSubmit={save} className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6 space-y-4">
+        <form
+          onSubmit={save}
+          className="rounded-xl p-5 mb-6 space-y-4"
+          style={{ background: "var(--surface-container)" }}
+        >
           <div>
-            <label className="block text-sm text-gray-300 mb-1">Question</label>
-            <input value={form.questionText} onChange={e => setForm(f => ({ ...f, questionText: e.target.value }))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
-              placeholder="Enter question text" required />
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+              Question
+            </label>
+            <input
+              value={form.questionText}
+              onChange={e => setForm(f => ({ ...f, questionText: e.target.value }))}
+              className="neon-input w-full px-4 py-2 text-sm"
+              placeholder="Enter question text"
+              required
+            />
           </div>
           <div>
-            <label className="block text-sm text-gray-300 mb-1">Answer Options</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+              Answer Options
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {form.options.map((opt, i) => (
-                <input key={i} value={opt} onChange={e => setForm(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))}
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-                  placeholder={`Option ${i + 1}`} />
+                <input
+                  key={i}
+                  value={opt}
+                  onChange={e => setForm(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))}
+                  className="neon-input px-3 py-2 text-sm"
+                  placeholder={`Option ${i + 1}`}
+                />
               ))}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-gray-300 mb-1">Correct Answer</label>
-              <input value={form.correctAnswer} onChange={e => setForm(f => ({ ...f, correctAnswer: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-                placeholder="Exact match" required />
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                Correct Answer
+              </label>
+              <input
+                value={form.correctAnswer}
+                onChange={e => setForm(f => ({ ...f, correctAnswer: e.target.value }))}
+                className="neon-input w-full px-3 py-2 text-sm"
+                placeholder="Exact match"
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-1">Category</label>
-              <input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-                placeholder="e.g. Science" />
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                Category
+              </label>
+              <input
+                value={form.category}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                className="neon-input w-full px-3 py-2 text-sm"
+                placeholder="e.g. Science"
+              />
             </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-1">Points</label>
-              <input type="number" value={form.points} onChange={e => setForm(f => ({ ...f, points: parseInt(e.target.value) || 10 }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500"
-                min={1} max={1000} />
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                Points
+              </label>
+              <input
+                type="number"
+                value={form.points}
+                onChange={e => setForm(f => ({ ...f, points: parseInt(e.target.value) || 10 }))}
+                className="neon-input w-full px-3 py-2 text-sm"
+                min={1}
+                max={1000}
+              />
             </div>
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-sm" style={{ color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>{error}</p>}
           <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-sm font-semibold transition-colors">
+            <button type="submit" disabled={saving} className="btn-primary px-4 py-2 text-sm">
               {saving ? "Saving..." : "Save Question"}
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors">Cancel</button>
+            <button type="button" onClick={() => setShowForm(false)} className="btn-tertiary px-4 py-2 text-sm">
+              Cancel
+            </button>
           </div>
         </form>
       )}
 
-      {loading ? <p className="text-gray-500">Loading...</p> : questions.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">No questions yet. Add your first one!</div>
+      {/* Questions list */}
+      {loading ? (
+        <p className="text-sm" style={{ color: "var(--on-surface-var)" }}>Loading...</p>
+      ) : questions.length === 0 ? (
+        <div className="text-center py-20" style={{ color: "var(--on-surface-var)" }}>
+          No questions yet. Add your first one!
+        </div>
       ) : (
         <div className="space-y-2">
           {questions.map(q => (
-            <div key={q.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start justify-between gap-4">
+            <div
+              key={q.id}
+              className="rounded-xl p-4 flex items-start justify-between gap-4"
+              style={{ background: "var(--surface-container)" }}
+            >
               <div className="flex-1 min-w-0">
-                <p className="text-white font-medium truncate">{q.questionText}</p>
-                <div className="flex gap-2 mt-1 flex-wrap">
+                <p className="font-medium text-sm truncate" style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}>
+                  {q.questionText}
+                </p>
+                <div className="flex gap-2 mt-2 flex-wrap">
                   {(q.options as string[]).map((o, i) => (
-                    <span key={i} className={`text-xs px-2 py-0.5 rounded ${o.toLowerCase() === q.correctAnswer.toLowerCase() ? "bg-green-500/20 text-green-300" : "bg-gray-800 text-gray-400"}`}>{o}</span>
+                    <span
+                      key={i}
+                      className="text-xs px-2 py-0.5 rounded-full"
+                      style={{
+                        background: o.toLowerCase() === q.correctAnswer.toLowerCase()
+                          ? "color-mix(in srgb, #00e3fd 15%, transparent)"
+                          : "var(--surface-high)",
+                        color: o.toLowerCase() === q.correctAnswer.toLowerCase()
+                          ? "var(--secondary)"
+                          : "var(--on-surface-var)",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      {o}
+                    </span>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{q.category ?? "No category"} · {q.points} pts</p>
+                <p className="text-xs mt-1.5" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+                  {q.category ?? "No category"} · {q.points} pts
+                </p>
               </div>
-              <button onClick={() => deleteQuestion(q.id)} className="text-gray-600 hover:text-red-400 text-sm transition-colors shrink-0">Delete</button>
+              <button
+                onClick={() => deleteQuestion(q.id)}
+                className="text-sm transition-colors shrink-0"
+                style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "var(--error)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "var(--on-surface-var)")}
+              >
+                Delete
+              </button>
             </div>
           ))}
         </div>

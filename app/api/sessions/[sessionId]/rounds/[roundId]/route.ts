@@ -6,6 +6,7 @@ import { requireHostAuth } from "@/lib/auth";
 const updateSchema = z.object({
   theme: z.string().max(100).optional(),
   status: z.enum(["PENDING", "ACTIVE", "COMPLETED"]).optional(),
+  defaultTimeLimit: z.number().int().min(5).max(300).optional(),
 });
 
 export async function PATCH(
