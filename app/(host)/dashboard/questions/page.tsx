@@ -25,6 +25,7 @@ export default function QuestionsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   async function load() {
     const res = await fetch("/api/questions");
@@ -173,9 +174,43 @@ export default function QuestionsPage() {
         <div className="text-center py-20" style={{ color: "var(--on-surface-var)" }}>
           No questions yet. Add your first one!
         </div>
-      ) : (
-        <div className="space-y-2">
-          {questions.map(q => (
+      ) : (() => {
+        const categories = Array.from(new Set(questions.map(q => q.category).filter(Boolean))) as string[];
+        const filtered = categoryFilter ? questions.filter(q => q.category === categoryFilter) : questions;
+        return (
+        <>
+          {/* Category filter chips */}
+          {categories.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-4">
+              <button
+                onClick={() => setCategoryFilter("")}
+                className="text-xs px-3 py-1 rounded-full font-medium transition-colors"
+                style={{
+                  background: categoryFilter === "" ? "var(--primary)" : "var(--surface-container)",
+                  color: categoryFilter === "" ? "var(--on-primary)" : "var(--on-surface-var)",
+                  fontFamily: "Manrope, sans-serif",
+                }}
+              >
+                All ({questions.length})
+              </button>
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className="text-xs px-3 py-1 rounded-full font-medium transition-colors"
+                  style={{
+                    background: categoryFilter === cat ? "var(--primary)" : "var(--surface-container)",
+                    color: categoryFilter === cat ? "var(--on-primary)" : "var(--on-surface-var)",
+                    fontFamily: "Manrope, sans-serif",
+                  }}
+                >
+                  {cat} ({questions.filter(q => q.category === cat).length})
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="space-y-2">
+          {filtered.map(q => (
             <div
               key={q.id}
               className="rounded-xl p-4 flex items-start justify-between gap-4"
@@ -219,8 +254,10 @@ export default function QuestionsPage() {
               </button>
             </div>
           ))}
-        </div>
-      )}
+          </div>
+        </>
+        );
+      })()}
     </div>
   );
 }
