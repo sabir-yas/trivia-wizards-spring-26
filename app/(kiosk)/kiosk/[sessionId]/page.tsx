@@ -14,6 +14,13 @@ interface RevealInfo {
   myAnswer: string;
 }
 
+const optionColors = [
+  { bg: "#1a0d2e", border: "#7c3aed", label: "#a78bfa" },  // violet
+  { bg: "#0d1a2e", border: "#0e7490", label: "#22d3ee" },  // cyan
+  { bg: "#1a2e0d", border: "#15803d", label: "#4ade80" },  // green
+  { bg: "#2e0d1a", border: "#be185d", label: "#f472b6" },  // pink
+];
+
 function KioskGame({ sessionId }: { sessionId: string }) {
   const socket = useSocket();
   const sound = useSound();
@@ -99,8 +106,10 @@ function KioskGame({ sessionId }: { sessionId: string }) {
 
   if (!teamId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-400 text-xl text-center px-8">No team ID found. Please register again.</p>
+      <div className="min-h-screen flex items-center justify-center p-8" style={{ background: "var(--bg)" }}>
+        <p className="text-xl text-center" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+          No team ID found. Please register again.
+        </p>
       </div>
     );
   }
@@ -108,27 +117,61 @@ function KioskGame({ sessionId }: { sessionId: string }) {
   // Waiting screen
   if (state === "waiting") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-6xl mb-6">🎩</div>
-        <h2 className="text-3xl font-bold text-white mb-3">You&apos;re in!</h2>
-        <p className="text-gray-400 text-xl">Waiting for the host to start...</p>
-        <div className="mt-8 flex gap-1">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-8 text-center"
+        style={{ background: "var(--bg)" }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, #ff7afb 6%, transparent), transparent 70%)",
+          }}
+        />
+        <div className="relative text-6xl mb-6">🎩</div>
+        <h2
+          className="font-display text-3xl font-bold mb-3 relative"
+          style={{ color: "var(--on-surface)" }}
+        >
+          You&apos;re in!
+        </h2>
+        <p className="text-xl relative" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+          Waiting for the host to start...
+        </p>
+        <div className="mt-8 flex gap-2 relative">
           {[0,1,2].map(i => (
-            <div key={i} className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            <div key={i} className="bounce-dot" style={{ animationDelay: `${i * 0.15}s` }} />
           ))}
         </div>
       </div>
     );
   }
 
-  // Answered / timer expired (waiting for reveal)
+  // Answered screen
   if (state === "answered") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-8 text-center"
+        style={{ background: "var(--bg)" }}
+      >
         <div className="text-6xl mb-6">✅</div>
-        <h2 className="text-3xl font-bold text-white mb-3">Answer locked in!</h2>
-        {selectedAnswer && <p className="text-purple-300 text-2xl font-semibold mb-2">&ldquo;{selectedAnswer}&rdquo;</p>}
-        <p className="text-gray-400 text-lg">Waiting for the host to reveal the answer...</p>
+        <h2 className="font-display text-3xl font-bold mb-3" style={{ color: "var(--on-surface)" }}>
+          Answer locked in!
+        </h2>
+        {selectedAnswer && (
+          <p
+            className="text-2xl font-semibold mb-2 px-6 py-3 rounded-2xl"
+            style={{
+              color: "var(--secondary)",
+              background: "color-mix(in srgb, var(--secondary) 10%, transparent)",
+              fontFamily: "Manrope, sans-serif",
+            }}
+          >
+            &ldquo;{selectedAnswer}&rdquo;
+          </p>
+        )}
+        <p className="text-lg mt-3" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+          Waiting for the host to reveal the answer...
+        </p>
       </div>
     );
   }
@@ -137,15 +180,41 @@ function KioskGame({ sessionId }: { sessionId: string }) {
   if (state === "reveal" && reveal) {
     const isCorrect = selectedAnswer?.toLowerCase() === reveal.correctAnswer.toLowerCase();
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
-        <div className="text-7xl mb-6">{isCorrect ? "🎉" : "😬"}</div>
-        <h2 className={`text-4xl font-bold mb-4 ${isCorrect ? "text-green-400" : "text-red-400"}`}>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-8 text-center"
+        style={{ background: "var(--bg)" }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: isCorrect
+              ? "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, #00e3fd 8%, transparent), transparent 70%)"
+              : "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, #ff6e84 8%, transparent), transparent 70%)",
+          }}
+        />
+        <div className="relative text-7xl mb-6">{isCorrect ? "🎉" : "😬"}</div>
+        <h2
+          className="font-display text-4xl font-bold mb-4 relative"
+          style={{ color: isCorrect ? "var(--secondary)" : "var(--error)" }}
+        >
           {isCorrect ? "Correct!" : "Not quite!"}
         </h2>
-        <p className="text-gray-300 text-xl mb-2">The answer was:</p>
-        <p className="text-white text-3xl font-bold">{reveal.correctAnswer}</p>
+        <p className="text-xl mb-2 relative" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+          The answer was:
+        </p>
+        <p
+          className="font-display text-3xl font-bold relative px-6 py-3 rounded-2xl"
+          style={{
+            color: "var(--tertiary)",
+            background: "color-mix(in srgb, var(--tertiary) 10%, transparent)",
+          }}
+        >
+          {reveal.correctAnswer}
+        </p>
         {!isCorrect && selectedAnswer && (
-          <p className="text-gray-500 text-lg mt-3">You answered: {selectedAnswer}</p>
+          <p className="text-lg mt-4 relative" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+            You answered: {selectedAnswer}
+          </p>
         )}
       </div>
     );
@@ -153,18 +222,28 @@ function KioskGame({ sessionId }: { sessionId: string }) {
 
   // Question screen
   return (
-    <div className="min-h-screen flex flex-col p-6">
+    <div
+      className="min-h-screen flex flex-col p-6"
+      style={{ background: "var(--bg)" }}
+    >
       {/* Timer bar */}
       {timer !== null && question && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm">Question {question.orderIndex + 1} of {question.totalQuestions}</span>
-            <span className={`text-2xl font-bold ${timer <= 5 ? "text-red-400" : "text-white"}`}>{timer}s</span>
+            <span className="text-sm" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
+              Question {question.orderIndex + 1} of {question.totalQuestions}
+            </span>
+            <span
+              className="font-display text-2xl font-bold"
+              style={{ color: timer <= 5 ? "var(--error)" : "var(--on-surface)" }}
+            >
+              {timer}s
+            </span>
           </div>
-          <div className="w-full bg-gray-800 rounded-full h-3">
+          <div className="mana-bar-track h-3">
             <div
-              className={`h-3 rounded-full transition-all duration-1000 ${timer <= 5 ? "bg-red-500" : "bg-purple-500"}`}
-              style={{ width: `${Math.max(0, (timer / (question.timeLimit)) * 100)}%` }}
+              className={`mana-bar-fill h-3 ${timer <= 5 ? "urgent" : ""}`}
+              style={{ width: `${Math.max(0, (timer / question.timeLimit) * 100)}%` }}
             />
           </div>
         </div>
@@ -173,34 +252,52 @@ function KioskGame({ sessionId }: { sessionId: string }) {
       {/* Question text */}
       {question && (
         <div className="flex-1 flex flex-col">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-            <p className="text-white text-2xl font-semibold text-center leading-relaxed">
+          <div
+            className="rounded-2xl p-6 mb-6"
+            style={{
+              background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 15%, var(--surface-container)), var(--surface-container))",
+              border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+            }}
+          >
+            <p
+              className="text-2xl font-semibold text-center leading-relaxed"
+              style={{ color: "var(--on-surface)", fontFamily: "Manrope, sans-serif" }}
+            >
               {question.questionText}
             </p>
           </div>
 
           {/* Answer buttons */}
           <div className="grid grid-cols-2 gap-4 flex-1">
-            {question.options.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => submitAnswer(option)}
-                disabled={state !== "question" || submitting || timer === 0}
-                className={`
-                  flex items-center gap-3 p-5 rounded-2xl text-left font-semibold text-lg transition-all active:scale-95
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  ${selectedAnswer === option
-                    ? "bg-purple-600 border-2 border-purple-400 text-white"
-                    : "bg-gray-900 border-2 border-gray-700 hover:border-purple-600 hover:bg-gray-800 text-white"
-                  }
-                `}
-              >
-                <span className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold shrink-0">
-                  {optionLabels[i]}
-                </span>
-                <span>{option}</span>
-              </button>
-            ))}
+            {question.options.map((option, i) => {
+              const col = optionColors[i % optionColors.length];
+              const isSelected = selectedAnswer === option;
+              return (
+                <button
+                  key={i}
+                  onClick={() => submitAnswer(option)}
+                  disabled={state !== "question" || submitting || timer === 0}
+                  className="flex items-center gap-3 p-5 rounded-2xl text-left font-semibold text-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    background: isSelected
+                      ? `color-mix(in srgb, ${col.border} 30%, var(--surface-container))`
+                      : col.bg,
+                    border: `2px solid ${isSelected ? col.border : "color-mix(in srgb, " + col.border + " 40%, transparent)"}`,
+                    boxShadow: isSelected ? `0 0 16px color-mix(in srgb, ${col.border} 40%, transparent)` : "none",
+                    fontFamily: "Manrope, sans-serif",
+                    color: "var(--on-surface)",
+                  }}
+                >
+                  <span
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                    style={{ background: col.border, color: "white", fontFamily: "Space Grotesk, sans-serif" }}
+                  >
+                    {optionLabels[i]}
+                  </span>
+                  <span>{option}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -211,7 +308,17 @@ function KioskGame({ sessionId }: { sessionId: string }) {
 export default function KioskGamePage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params);
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
+          <div className="flex gap-1.5">
+            {[0,1,2].map(i => (
+              <div key={i} className="bounce-dot" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </div>
+      }
+    >
       <KioskGame sessionId={sessionId} />
     </Suspense>
   );

@@ -100,13 +100,14 @@ enum RoundStatus {
 }
 
 model Round {
-  id            String      @id @default(cuid())
-  gameSessionId String
-  roundNumber   Int
-  theme         String?
-  status        RoundStatus @default(PENDING)
-  startedAt     DateTime?
-  endedAt       DateTime?
+  id               String      @id @default(cuid())
+  gameSessionId    String
+  roundNumber      Int
+  theme            String?
+  defaultTimeLimit Int         @default(30)
+  status           RoundStatus @default(PENDING)
+  startedAt        DateTime?
+  endedAt          DateTime?
 
   gameSession    GameSession     @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
   roundQuestions RoundQuestion[]

@@ -20,7 +20,8 @@ export default function LoginPage() {
         body: JSON.stringify({ password }),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
         setError(data.error ?? "Login failed");
         return;
       }
@@ -31,27 +32,69 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full max-w-sm shadow-xl">
-        <h1 className="text-2xl font-bold text-white mb-2">Trivia Wizards</h1>
-        <p className="text-gray-400 text-sm mb-6">Host Login</p>
+    <div
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{ background: "var(--bg)" }}
+    >
+      {/* Ambient glow backdrop */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, #ff7afb 8%, transparent) 0%, transparent 70%)",
+        }}
+      />
+
+      <div
+        className="glass glow-primary relative w-full max-w-sm rounded-2xl p-8"
+        style={{ border: "1px solid color-mix(in srgb, #ff7afb 15%, transparent)" }}
+      >
+        {/* Logo mark */}
+        <div className="flex items-center justify-center mb-6">
+          <span className="text-5xl">🎩</span>
+        </div>
+
+        <h1
+          className="font-display text-3xl font-bold text-center mb-1"
+          style={{ color: "var(--on-surface)" }}
+        >
+          Trivia Wizards
+        </h1>
+        <p
+          className="text-center text-sm mb-8"
+          style={{ color: "var(--on-surface-var)", fontFamily: "var(--font-body)" }}
+        >
+          Host Login
+        </p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-300 mb-1">Password</label>
+            <label
+              className="block text-sm font-medium mb-2"
+              style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}
+            >
+              Password
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+              className="neon-input w-full px-4 py-3 text-sm"
               placeholder="Enter host password"
               autoFocus
             />
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+
+          {error && (
+            <p className="text-sm" style={{ color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>
+              {error}
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={loading || !password}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 rounded-lg transition-colors"
+            className="btn-primary w-full py-3 text-sm mt-2"
           >
             {loading ? "Logging in..." : "Log In"}
           </button>

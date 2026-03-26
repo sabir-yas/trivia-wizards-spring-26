@@ -11,12 +11,6 @@ interface Session {
   _count: { teams: number; rounds: number };
 }
 
-const statusColors = {
-  LOBBY: "bg-yellow-500/20 text-yellow-300",
-  ACTIVE: "bg-green-500/20 text-green-300",
-  COMPLETED: "bg-gray-500/20 text-gray-400",
-};
-
 export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,55 +48,68 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Game Sessions</h2>
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-8">
+        <h2
+          className="font-display text-2xl font-bold"
+          style={{ color: "var(--on-surface)" }}
+        >
+          Game Sessions
+        </h2>
         <div className="flex gap-3">
           <Link
             href="/dashboard/questions"
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+            className="btn-secondary px-4 py-2 text-sm"
           >
             Question Bank
           </Link>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold transition-colors"
+            className="btn-primary px-4 py-2 text-sm"
           >
             + New Session
           </button>
         </div>
       </div>
 
+      {/* New session form */}
       {showForm && (
-        <form onSubmit={createSession} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6 flex gap-3">
+        <form
+          onSubmit={createSession}
+          className="rounded-xl p-4 mb-6 flex gap-3"
+          style={{ background: "var(--surface-container)" }}
+        >
           <input
             autoFocus
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Session name (e.g. Tuesday Night Trivia)"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+            className="neon-input flex-1 px-4 py-2 text-sm"
           />
           <button
             type="submit"
             disabled={creating || !newName.trim()}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-sm font-semibold transition-colors"
+            className="btn-primary px-4 py-2 text-sm"
           >
             {creating ? "Creating..." : "Create"}
           </button>
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+            className="btn-tertiary px-4 py-2 text-sm"
           >
             Cancel
           </button>
         </form>
       )}
 
+      {/* Session list */}
       {loading ? (
-        <p className="text-gray-500">Loading sessions...</p>
+        <p className="text-sm" style={{ color: "var(--on-surface-var)" }}>Loading sessions...</p>
       ) : sessions.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
-          <p className="text-lg mb-2">No sessions yet</p>
+        <div className="text-center py-20" style={{ color: "var(--on-surface-var)" }}>
+          <div className="text-4xl mb-4">🎩</div>
+          <p className="font-display text-lg font-semibold mb-1" style={{ color: "var(--on-surface)" }}>No sessions yet</p>
           <p className="text-sm">Create your first game session to get started.</p>
         </div>
       ) : (
@@ -111,19 +118,28 @@ export default function DashboardPage() {
             <Link
               key={s.id}
               href={`/dashboard/sessions/${s.id}`}
-              className="block bg-gray-900 border border-gray-800 hover:border-purple-700 rounded-xl p-5 transition-colors group"
+              className="block rounded-xl p-5 transition-all group"
+              style={{
+                background: "var(--surface-container)",
+                border: "1px solid transparent",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "color-mix(in srgb, #ff7afb 30%, transparent)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "transparent")}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-white group-hover:text-purple-300 transition-colors">
+                  <h3
+                    className="font-display font-semibold transition-colors"
+                    style={{ color: "var(--on-surface)" }}
+                  >
                     {s.sessionName}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm mt-1" style={{ color: "var(--on-surface-var)", fontFamily: "Manrope, sans-serif" }}>
                     {s._count.rounds} rounds · {s._count.teams} teams ·{" "}
                     {new Date(s.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[s.status]}`}>
+                <span className={`badge badge-${s.status.toLowerCase()}`}>
                   {s.status}
                 </span>
               </div>
