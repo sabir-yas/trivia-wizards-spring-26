@@ -45,14 +45,8 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
       socket.emit("display:join-session", { sessionId });
     }
 
-    if (socket.connected) {
-      joinSession();
-    } else {
-      socket.once("connect", joinSession);
-    }
-
-    socket.on("connect", joinSession);
-
+    // Register all listeners before joining so no events are missed
+    // on slow connections or reconnects (e.g. Render)
     socket.on("game:state-changed", ({ status }) => {
       if (status === "LOBBY") setDisplayState("lobby");
       if (status === "COMPLETED") setDisplayState("ended");
@@ -101,6 +95,14 @@ export default function DisplayPage({ params }: { params: Promise<{ sessionId: s
       setDisplayState("ended");
       sound.gameOver();
     });
+
+    // Join after listeners are registered
+    if (socket.connected) {
+      joinSession();
+    } else {
+      socket.once("connect", joinSession);
+    }
+    socket.on("connect", joinSession);
 
     return () => {
       socket.off("connect", joinSession);

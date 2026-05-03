@@ -42,57 +42,58 @@ function KioskGame({ sessionId }: { sessionId: string }) {
       socket.emit("kiosk:join-session", { sessionId, teamId, deviceToken: "kiosk" });
     }
 
-    // Emit immediately if already connected, otherwise wait for connect
-    if (socket.connected) {
-      joinSession();
-    } else {
-      socket.once("connect", joinSession);
-    }
-
-    // Re-join on every reconnection (mobile network switches, app backgrounding, etc.)
-    socket.on("connect", joinSession);
-
-    socket.on("game:question-start", (payload) => {
+    function onQuestionStart(payload: GameQuestionStartPayload) {
       setQuestion(payload);
       setSelectedAnswer(null);
       selectedAnswerRef.current = null;
       setReveal(null);
       setTimer(payload.timeLimit);
       setState("question");
-    });
+    }
 
-    socket.on("timer:tick", ({ secondsRemaining }) => setTimer(secondsRemaining));
-    socket.on("timer:expired", () => {
+    function onTimerTick({ secondsRemaining }: { secondsRemaining: number }) {
+      setTimer(secondsRemaining);
+    }
+
+    function onTimerExpired() {
       setTimer(0);
       setState(prev => prev === "question" ? "answered" : prev);
       sound.timerExpired();
-    });
+    }
 
-    socket.on("game:answer-reveal", ({ correctAnswer }) => {
+    function onAnswerReveal({ correctAnswer }: { correctAnswer: string }) {
       const myAns = selectedAnswerRef.current ?? "";
       setReveal({ correctAnswer, myAnswer: myAns });
       setState("reveal");
       const isCorrect = myAns.toLowerCase() === correctAnswer.toLowerCase();
       if (isCorrect) sound.correctAnswer();
       else sound.wrongAnswer();
-    });
+    }
 
+    // Register all listeners first, then join — so no events are missed
+    // on reconnect regardless of timing on slow connections (e.g. Render)
+    socket.on("game:question-start", onQuestionStart);
+    socket.on("timer:tick", onTimerTick);
+    socket.on("timer:expired", onTimerExpired);
+    socket.on("game:answer-reveal", onAnswerReveal);
     socket.on("game:round-ended", () => setState("waiting"));
-    socket.on("game:session-ended", () => {
-      setState("waiting");
-      sound.gameOver();
-    });
-    socket.on("answer:acknowledged", () => {
-      setState("answered");
-      sound.answerLocked();
-    });
+    socket.on("game:session-ended", () => { setState("waiting"); sound.gameOver(); });
+    socket.on("answer:acknowledged", () => { setState("answered"); sound.answerLocked(); });
+
+    // Join immediately if connected, otherwise wait — and re-join on every reconnect
+    if (socket.connected) {
+      joinSession();
+    } else {
+      socket.once("connect", joinSession);
+    }
+    socket.on("connect", joinSession);
 
     return () => {
       socket.off("connect", joinSession);
-      socket.off("game:question-start");
-      socket.off("timer:tick");
-      socket.off("timer:expired");
-      socket.off("game:answer-reveal");
+      socket.off("game:question-start", onQuestionStart);
+      socket.off("timer:tick", onTimerTick);
+      socket.off("timer:expired", onTimerExpired);
+      socket.off("game:answer-reveal", onAnswerReveal);
       socket.off("game:round-ended");
       socket.off("game:session-ended");
       socket.off("answer:acknowledged");
