@@ -36,6 +36,8 @@ app.prepare().then(() => {
         methods: ["GET", "POST"],
       },
       transports: ["websocket"],
+      pingInterval: 25000,
+      pingTimeout: 60000,
     }
   );
 
